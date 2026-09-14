@@ -31,10 +31,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from lrg.ingest import load_tickets
-from lrg.nlp import build_documents, vectorize
-from lrg.cluster import cluster_tickets
-from lrg.generate import build_runbook, write_runbook, write_index
+from lrg.pipeline import run_pipeline
 
 
 def main() -> None:
@@ -50,34 +47,18 @@ def main() -> None:
     parser.add_argument("--verbose", action="store_true", help="Print per-cluster details while running")
     args = parser.parse_args()
 
-    tickets_dir = Path(args.tickets_dir)
-    runbooks_dir = Path(args.runbooks_dir)
-    runbooks_dir.mkdir(parents=True, exist_ok=True)
+    result = run_pipeline(Path(args.tickets_dir), Path(args.runbooks_dir), threshold=args.threshold)
+    print(f"Loaded {len(result.tickets)} ticket(s) from {args.tickets_dir}/")
+    print(f"Found {len(result.runbooks)} distinct symptom signature(s) at threshold={args.threshold}")
 
-    tickets = load_tickets(tickets_dir)
-    print(f"Loaded {len(tickets)} ticket(s) from {tickets_dir}/")
-
-    docs = build_documents(tickets)
-    vectorizer, matrix = vectorize(docs)
-
-    clusters = cluster_tickets(matrix, threshold=args.threshold)
-    print(f"Found {len(clusters)} distinct symptom signature(s) at threshold={args.threshold}")
-
-    runbooks = []
-    for row_indices in clusters:
-        cluster_tickets_list = [tickets[i] for i in row_indices]
-        runbook = build_runbook(cluster_tickets_list, vectorizer, matrix, row_indices)
-        out_path = write_runbook(runbook, runbooks_dir)
-        runbooks.append(runbook)
-
+    for runbook, row_indices in zip(result.runbooks, result.clusters):
         if args.verbose:
-            ids = ", ".join(t.id for t in cluster_tickets_list)
-            print(f"  - {out_path.name}: {len(cluster_tickets_list)} incident(s) [{ids}]")
+            ids = ", ".join(result.tickets[i].id for i in row_indices)
+            print(f"  - {runbook.filename}: {len(row_indices)} incident(s) [{ids}]")
         else:
-            print(f"  - wrote {out_path}")
+            print(f"  - wrote {Path(args.runbooks_dir) / runbook.filename}")
 
-    index_path = write_index(runbooks, runbooks_dir)
-    print(f"Wrote index: {index_path}")
+    print(f"Wrote index: {result.index_path}")
 
 
 if __name__ == "__main__":

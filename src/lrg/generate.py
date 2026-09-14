@@ -110,14 +110,22 @@ def build_runbook(tickets: list[Ticket], vectorizer, matrix, row_indices: list[i
     return Runbook(slug=slug, title=title, signature_terms=signature_terms, tickets=tickets)
 
 
-def _extract_existing_manual_notes(path: Path) -> str:
+def extract_manual_notes(path: Path) -> str:
     if not path.exists():
         return ""
     match = MANUAL_NOTES_BLOCK_RE.search(path.read_text(encoding="utf-8"))
     return match.group(1).strip("\n") if match else ""
 
 
-def render_runbook_markdown(runbook: Runbook, existing_manual_notes: str) -> str:
+def runbook_view(runbook: Runbook, existing_manual_notes: str) -> dict:
+    """
+    Computes every derived field a rendered runbook needs (sorted tickets,
+    deduped diagnostics/resolutions, ranked root causes, etc.) as a plain
+    dict. This is the single source of truth for "what a runbook contains" —
+    both the Markdown renderer below and the API's JSON responses build on
+    top of this instead of recomputing it separately, so the web UI can
+    never drift from the generated .md files.
+    """
     tickets = sorted(runbook.tickets, key=lambda t: t.date)
     dates = [t.date for t in tickets if t.date]
     devices = sorted({t.device for t in tickets if t.device})
@@ -125,6 +133,32 @@ def render_runbook_markdown(runbook: Runbook, existing_manual_notes: str) -> str
     diagnostics = _dedupe_lines([t.diagnostics for t in tickets])
     resolutions = _dedupe_lines([t.resolution for t in tickets])
     root_causes = Counter(t.root_cause.strip() for t in tickets if t.root_cause.strip())
+
+    return {
+        "slug": runbook.slug,
+        "title": runbook.title,
+        "signature_terms": runbook.signature_terms,
+        "devices": devices,
+        "incident_count": len(tickets),
+        "first_seen": dates[0] if dates else None,
+        "last_seen": dates[-1] if dates else None,
+        "diagnostics": diagnostics,
+        "root_causes": [{"cause": cause, "count": count} for cause, count in root_causes.most_common()],
+        "resolutions": resolutions,
+        "source_incidents": [
+            {"id": t.id, "date": t.date, "device": t.device, "file": t.source_path.name} for t in tickets
+        ],
+        "manual_notes": existing_manual_notes,
+    }
+
+
+def render_runbook_markdown(runbook: Runbook, existing_manual_notes: str) -> str:
+    view = runbook_view(runbook, existing_manual_notes)
+    tickets = sorted(runbook.tickets, key=lambda t: t.date)
+    dates = [t.date for t in tickets if t.date]
+    devices = view["devices"]
+    diagnostics = view["diagnostics"]
+    resolutions = view["resolutions"]
 
     lines: list[str] = []
     lines.append(f"# {runbook.title}")
@@ -163,10 +197,10 @@ def render_runbook_markdown(runbook: Runbook, existing_manual_notes: str) -> str
     lines.append("")
 
     lines.append("## Likely root cause(s)")
-    if root_causes:
-        for cause, count in root_causes.most_common():
-            prefix = f"**({count}x)** " if count > 1 else ""
-            lines.append(f"- {prefix}{cause}")
+    if view["root_causes"]:
+        for rc in view["root_causes"]:
+            prefix = f"**({rc['count']}x)** " if rc["count"] > 1 else ""
+            lines.append(f"- {prefix}{rc['cause']}")
     else:
         lines.append("- (none recorded)")
     lines.append("")
@@ -200,10 +234,18 @@ def render_runbook_markdown(runbook: Runbook, existing_manual_notes: str) -> str
 
 def write_runbook(runbook: Runbook, runbooks_dir: Path) -> Path:
     out_path = Path(runbooks_dir) / runbook.filename
-    existing_notes = _extract_existing_manual_notes(out_path)
+    existing_notes = extract_manual_notes(out_path)
     content = render_runbook_markdown(runbook, existing_notes)
     out_path.write_text(content, encoding="utf-8")
     return out_path
+
+
+def runbook_to_dict(runbook: Runbook, runbooks_dir: Path) -> dict:
+    """Same manual-notes-preserving lookup as write_runbook(), but for
+    callers (the API) that want JSON instead of a rendered .md file."""
+    out_path = Path(runbooks_dir) / runbook.filename
+    existing_notes = extract_manual_notes(out_path)
+    return runbook_view(runbook, existing_notes)
 
 
 def write_index(runbooks: list[Runbook], runbooks_dir: Path) -> Path:

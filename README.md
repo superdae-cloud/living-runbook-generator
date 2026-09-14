@@ -15,18 +15,53 @@ ticket data later.
 
 ```bash
 cd living-runbook-generator
-pip install -r requirements.txt   # scikit-learn, PyYAML, numpy — that's it
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt   # scikit-learn, PyYAML, numpy, FastAPI, uvicorn
 python3 generate_runbooks.py --verbose
 ```
 
 Open `runbooks/index.md` — you'll see four auto-generated runbooks built
-from six sample incidents, ranked by how often each pattern has occurred.
+from seven sample incidents, ranked by how often each pattern has occurred.
+
+## Web dashboard
+
+There's also a FastAPI + React dashboard on top of the same pipeline: browse
+runbooks and tickets, submit a new ticket through a form (which re-runs the
+pipeline immediately), watch a live similarity-graph visualization of how
+tickets cluster, and hit a "Regenerate" button to see the "living" mechanic
+happen on screen instead of via diffing Markdown files by hand.
+
+**One-command demo** (build the frontend once, then a single Python process
+serves both the API and the built UI):
+
+```bash
+cd web && npm install && npm run build && cd ..
+python3 serve.py
+```
+
+Open http://127.0.0.1:8000 — that's the whole app, one process.
+
+**Frontend development** (hot-reloading React, proxied to the API):
+
+```bash
+python3 serve.py                 # terminal 1 — API on :8000
+cd web && npm install && npm run dev   # terminal 2 — UI on :5173, proxies /api to :8000
+```
+
+The dashboard and the CLI (`generate_runbooks.py`) both call the exact same
+`lrg.pipeline.run_pipeline()` function and read/write the exact same
+`tickets/` and `runbooks/` folders — there's no separate database, so a
+ticket added through the UI shows up if you run the CLI, and vice versa.
 
 ## How it works — the pipeline
 
 ```
-tickets/*.md  →  ingest.py  →  nlp.py  →  cluster.py  →  generate.py  →  runbooks/*.md
- (raw text)      (structured)  (vectors)   (groups)      (rendered)
+tickets/*.md → ingest.py → nlp.py → cluster.py → generate.py → runbooks/*.md
+ (raw text)    (structured) (vectors) (groups)     (rendered)
+                                                 ↑
+                              pipeline.py ties these four together;
+                              generate_runbooks.py (CLI) and api.py
+                              (dashboard) both just call it.
 ```
 
 **1. `ingest.py` — parse raw tickets into structured data.**
@@ -161,13 +196,17 @@ Once this pipeline feels familiar, here's the natural progression:
 
 ```
 living-runbook-generator/
-├── generate_runbooks.py     # entry point — run this
+├── generate_runbooks.py     # CLI entry point
+├── serve.py                 # web dashboard entry point (FastAPI + built React UI)
 ├── requirements.txt
 ├── tickets/                 # sample synthetic NOC tickets (input)
 ├── runbooks/                # auto-generated output (index.md + one file per signature)
-└── src/lrg/
-    ├── ingest.py            # parse ticket files
-    ├── nlp.py                # TF-IDF vectorization
-    ├── cluster.py            # similarity-based grouping
-    └── generate.py           # runbook rendering + manual-notes preservation
+├── src/lrg/
+│   ├── ingest.py             # parse ticket files
+│   ├── nlp.py                # TF-IDF vectorization
+│   ├── cluster.py            # similarity-based grouping
+│   ├── generate.py           # runbook rendering + manual-notes preservation
+│   ├── pipeline.py           # ties ingest→nlp→cluster→generate together; shared by CLI + API
+│   └── api.py                # FastAPI routes for the web dashboard
+└── web/                      # React dashboard (Vite) — `npm run dev` or `npm run build`
 ```

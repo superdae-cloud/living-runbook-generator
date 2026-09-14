@@ -48,13 +48,19 @@ class _UnionFind:
             self.parent[ra] = rb
 
 
-def cluster_tickets(matrix, threshold: float = 0.35) -> list[list[int]]:
+def compute_similarity(matrix):
+    """Pairwise cosine similarity for a TF-IDF matrix. Exposed separately
+    from cluster_tickets() so callers (e.g. the API's graph endpoint) can
+    reuse the same matrix without recomputing it."""
+    return cosine_similarity(matrix)
+
+
+def cluster_tickets(similarity, threshold: float = 0.35) -> list[list[int]]:
     """
-    Returns a list of clusters, each a list of row indices into `matrix`
-    (and therefore into the original `tickets` list, which must be in
-    the same order used to build the matrix).
+    Returns a list of clusters, each a list of row indices into the
+    similarity matrix (and therefore into the original `tickets` list,
+    which must be in the same order used to build the matrix).
     """
-    similarity = cosine_similarity(matrix)
     n = similarity.shape[0]
     uf = _UnionFind(n)
 
