@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.git/
+.github/
+tests/
+web/node_modules/
+web/dist/
+runbooks/.llm_cache.json

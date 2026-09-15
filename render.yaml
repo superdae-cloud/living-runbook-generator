@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: living-runbook-generator
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /api/status
+    envVars:
+      # Leave ANTHROPIC_API_KEY unset for a public demo — the AI-synthesis
+      # toggle just stays disabled (fails soft, see src/lrg/llm.py). Add it
+      # as a secret in the Render dashboard if you want to enable it.
+      - key: PYTHONUNBUFFERED
+        value: "1"

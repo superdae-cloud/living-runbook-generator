@@ -69,6 +69,19 @@ The dashboard and the CLI (`generate_runbooks.py`) both call the exact same
 `tickets/` and `runbooks/` folders — there's no separate database, so a
 ticket added through the UI shows up if you run the CLI, and vice versa.
 
+### Deploying it
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/superdae-cloud/living-runbook-generator)
+
+The `Dockerfile` builds the React app and serves it + the API from one
+container (`render.yaml` wires this up as a Render Blueprint — click the
+button, connect the repo, done). `ANTHROPIC_API_KEY` is left unset by
+design for a public demo: the ✨ AI-synthesis toggle just stays disabled
+rather than exposing a key or letting strangers spend your API credits —
+add it as a secret in the platform's dashboard if you want to enable it
+on your own deployment. The same `Dockerfile` works on any container
+platform (Fly.io, Railway, a VPS, ...), not just Render.
+
 ## How it works — the pipeline
 
 ```
