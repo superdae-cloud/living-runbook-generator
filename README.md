@@ -1,5 +1,8 @@
 # Living Runbook Generator
 
+[![CI](https://github.com/superdae-cloud/living-runbook-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/superdae-cloud/living-runbook-generator/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 An NLP layer that reads through a NOC's past incident tickets and
 postmortems and auto-builds troubleshooting runbooks keyed to symptom
 signatures (e.g. "BGP flap + high CPU on PE routers") — and keeps
@@ -22,6 +25,19 @@ python3 generate_runbooks.py --verbose
 
 Open `runbooks/index.md` — you'll see four auto-generated runbooks built
 from seven sample incidents, ranked by how often each pattern has occurred.
+
+## Running the tests
+
+```bash
+pip install -r requirements-dev.txt
+python3 -m pytest tests/ -v
+```
+
+40 tests across ingestion, TF-IDF vectorization, clustering, runbook
+rendering/manual-notes preservation, the full pipeline, and the LLM
+synthesis module's fail-soft behavior (mocked — no API credentials
+required to run the suite). Runs automatically on every push via GitHub
+Actions (badge above).
 
 ## Web dashboard
 
