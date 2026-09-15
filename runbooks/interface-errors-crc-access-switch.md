@@ -21,7 +21,7 @@
 - Swapped patch cable — no change
 - Swapped SFP with a known-good spare — error counters stopped climbing
 
-## Likely root cause(s)
+## Root cause
 - Failing SFP transceiver on ACC7-ATL Gi0/12 was introducing CRC errors under load.
 
 ## Resolution steps that worked

@@ -20,8 +20,14 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     }),
-  regenerate: (threshold) =>
-    request(`/regenerate${threshold != null ? `?threshold=${threshold}` : ''}`, { method: 'POST' }),
+  regenerate: (threshold, synthesize) => {
+    const params = new URLSearchParams()
+    if (threshold != null) params.set('threshold', threshold)
+    if (synthesize != null) params.set('synthesize', synthesize)
+    const qs = params.toString()
+    return request(`/regenerate${qs ? `?${qs}` : ''}`, { method: 'POST' })
+  },
   graph: (threshold) => request(`/graph${threshold != null ? `?threshold=${threshold}` : ''}`),
   search: (q) => request(`/search?q=${encodeURIComponent(q)}`),
+  status: () => request('/status'),
 }

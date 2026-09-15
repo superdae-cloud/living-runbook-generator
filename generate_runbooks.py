@@ -31,6 +31,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
+from lrg import llm
 from lrg.pipeline import run_pipeline
 
 
@@ -44,17 +45,34 @@ def main() -> None:
         default=0.35,
         help="Cosine-similarity threshold for grouping tickets into one signature (default: 0.35)",
     )
+    parser.add_argument(
+        "--llm-root-cause",
+        action="store_true",
+        help="Ask Claude to synthesize one root-cause paragraph per cluster (needs Anthropic credentials; "
+        "falls back silently to the verbatim list if unavailable). Cached per cluster in "
+        "runbooks/.llm_cache.json so unchanged clusters aren't re-billed on every run.",
+    )
     parser.add_argument("--verbose", action="store_true", help="Print per-cluster details while running")
     args = parser.parse_args()
 
-    result = run_pipeline(Path(args.tickets_dir), Path(args.runbooks_dir), threshold=args.threshold)
+    if args.llm_root_cause and not llm.has_credentials():
+        print("Warning: --llm-root-cause was passed but no Anthropic credentials were found — "
+              "root causes will fall back to the verbatim per-incident list.")
+
+    result = run_pipeline(
+        Path(args.tickets_dir),
+        Path(args.runbooks_dir),
+        threshold=args.threshold,
+        synthesize_root_cause=args.llm_root_cause,
+    )
     print(f"Loaded {len(result.tickets)} ticket(s) from {args.tickets_dir}/")
     print(f"Found {len(result.runbooks)} distinct symptom signature(s) at threshold={args.threshold}")
 
     for runbook, row_indices in zip(result.runbooks, result.clusters):
         if args.verbose:
             ids = ", ".join(result.tickets[i].id for i in row_indices)
-            print(f"  - {runbook.filename}: {len(row_indices)} incident(s) [{ids}]")
+            ai_note = " [AI root cause synthesized]" if runbook.ai_root_cause else ""
+            print(f"  - {runbook.filename}: {len(row_indices)} incident(s) [{ids}]{ai_note}")
         else:
             print(f"  - wrote {Path(args.runbooks_dir) / runbook.filename}")
 

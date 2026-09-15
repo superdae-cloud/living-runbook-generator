@@ -21,7 +21,7 @@
 - Vendor bug database matched a known memory-leak defect in the running IOS-XR version under heavy route-churn conditions
 - No configuration error found — this was a software defect
 
-## Likely root cause(s)
+## Root cause
 - Known vendor software defect causing a slow memory leak in the BGP process under sustained high route churn, eventually exhausting memory and forcing a process restart.
 
 ## Resolution steps that worked

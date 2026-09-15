@@ -35,7 +35,9 @@ export default function Dashboard({ runbooks, onOpenRunbook }) {
             onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg-panel)')}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <h3 style={{ margin: '0 0 0.5rem 0' }}>{rb.title}</h3>
+              <h3 style={{ margin: '0 0 0.5rem 0' }}>
+                {rb.title} {rb.ai_root_cause && <span title="AI-synthesized root cause available">✨</span>}
+              </h3>
               <span
                 style={{
                   background: 'var(--accent-dim)',

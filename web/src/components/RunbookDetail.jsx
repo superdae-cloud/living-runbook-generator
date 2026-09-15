@@ -47,15 +47,49 @@ export default function RunbookDetail({ slug, onBack }) {
         </ul>
       </Section>
 
-      <Section title="Likely root cause(s)">
-        <ul>
-          {rb.root_causes.map((rc, i) => (
-            <li key={i}>
-              {rc.count > 1 && <strong>({rc.count}×) </strong>}
-              {rc.cause}
-            </li>
-          ))}
-        </ul>
+      <Section title="Root cause">
+        {rb.ai_root_cause ? (
+          <>
+            <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>
+              AI-synthesized{rb.ai_root_cause_model && <> using {rb.ai_root_cause_model}</>} — verify against
+              source tickets before treating this as ground truth during a live incident.
+            </p>
+            <div
+              style={{
+                background: 'var(--bg-panel)',
+                border: '1px solid var(--accent-dim)',
+                borderLeft: '3px solid var(--accent)',
+                borderRadius: 6,
+                padding: '0.75rem',
+                marginBottom: '0.75rem',
+              }}
+            >
+              {rb.ai_root_cause}
+            </div>
+            <details>
+              <summary style={{ cursor: 'pointer', color: 'var(--text-dim)' }}>
+                Raw root-cause reports per incident
+              </summary>
+              <ul>
+                {rb.root_causes.map((rc, i) => (
+                  <li key={i}>
+                    {rc.count > 1 && <strong>({rc.count}×) </strong>}
+                    {rc.cause}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          </>
+        ) : (
+          <ul>
+            {rb.root_causes.map((rc, i) => (
+              <li key={i}>
+                {rc.count > 1 && <strong>({rc.count}×) </strong>}
+                {rc.cause}
+              </li>
+            ))}
+          </ul>
+        )}
       </Section>
 
       <Section title="Resolution steps that worked">

@@ -152,6 +152,36 @@ of building an NLP pipeline, not a sign of a bug. Start around
 `0.3`–`0.4` and adjust after reading the actual output against tickets
 you know the answer for.
 
+## LLM-assisted root-cause synthesis (optional)
+
+By default, a runbook's "Root cause" section is a verbatim, frequency-ranked
+list of what each incident's ticket said — which gets repetitive once a
+signature has several near-duplicate incidents. Opt in to have Claude read
+every incident's diagnostics + root cause in a cluster and write one
+concise paragraph instead:
+
+```bash
+python3 generate_runbooks.py --llm-root-cause --verbose
+```
+
+or toggle **✨ AI root cause** in the web dashboard.
+
+- **Needs Anthropic credentials** (`ANTHROPIC_API_KEY`, or an `ant auth
+  login` profile) available to the process running `generate_runbooks.py`
+  / `serve.py`. Without them, this fails soft: a warning is printed (CLI)
+  or the toggle is disabled (dashboard), and root causes fall back to the
+  verbatim list — the pipeline never breaks because of a missing key.
+- **Cached per cluster** in `runbooks/.llm_cache.json` (gitignored), keyed
+  by the cluster's actual ticket IDs + diagnostics/root-cause text. A
+  regenerate only calls the API for a cluster whose evidence actually
+  changed — adding an unrelated ticket, or re-running with the same
+  tickets, costs nothing extra.
+- **Model** defaults to `claude-opus-5`; override with the `LRG_LLM_MODEL`
+  env var.
+- The synthesized paragraph is always shown alongside — never instead
+  of — the raw per-incident list (collapsed under "Raw root-cause reports
+  per incident"), so you can verify it against source tickets.
+
 ## Why TF-IDF instead of embeddings?
 
 Most similarity-search tutorials reach straight for sentence embeddings
@@ -182,12 +212,9 @@ Once this pipeline feels familiar, here's the natural progression:
 3. **Scheduling.** Once tickets flow in automatically, replace "run the
    script by hand" with a cron job (`crontab -e`, run nightly) or a
    webhook that fires `generate_runbooks.py` when a ticket closes.
-4. **LLM-assisted root-cause synthesis.** Right now root causes are
-   listed verbatim, ranked by frequency. A next step is asking an LLM
-   to synthesize a single best-guess root-cause statement from the
-   cluster's raw text instead of listing each ticket's version
-   separately — useful once clusters get large enough that a raw list
-   becomes unwieldy.
+4. ~~**LLM-assisted root-cause synthesis.**~~ Done — see
+   [LLM-assisted root-cause synthesis](#llm-assisted-root-cause-synthesis-optional)
+   above (`--llm-root-cause` / the dashboard's ✨ toggle).
 5. **Vector database.** If the ticket corpus grows into the tens of
    thousands, an in-memory cosine-similarity matrix stops scaling.
    That's when a vector DB (Chroma, FAISS) earns its complexity.
@@ -207,6 +234,7 @@ living-runbook-generator/
 │   ├── cluster.py            # similarity-based grouping
 │   ├── generate.py           # runbook rendering + manual-notes preservation
 │   ├── pipeline.py           # ties ingest→nlp→cluster→generate together; shared by CLI + API
+│   ├── llm.py                # optional Claude-assisted root-cause synthesis (fails soft)
 │   └── api.py                # FastAPI routes for the web dashboard
 └── web/                      # React dashboard (Vite) — `npm run dev` or `npm run build`
 ```

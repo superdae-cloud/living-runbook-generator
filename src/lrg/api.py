@@ -24,6 +24,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from . import llm
 from .generate import runbook_to_dict
 from .ingest import Ticket
 from .pipeline import PipelineResult, run_pipeline
@@ -41,14 +42,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-_state: dict = {"result": None, "threshold": DEFAULT_THRESHOLD}
+_state: dict = {"result": None, "threshold": DEFAULT_THRESHOLD, "synthesize": False}
 
 
-def _regenerate(threshold: float | None = None) -> PipelineResult:
+def _regenerate(threshold: float | None = None, synthesize: bool | None = None) -> PipelineResult:
     active_threshold = threshold if threshold is not None else _state["threshold"]
-    result = run_pipeline(TICKETS_DIR, RUNBOOKS_DIR, threshold=active_threshold)
+    active_synthesize = synthesize if synthesize is not None else _state["synthesize"]
+    result = run_pipeline(
+        TICKETS_DIR,
+        RUNBOOKS_DIR,
+        threshold=active_threshold,
+        synthesize_root_cause=active_synthesize,
+    )
     _state["result"] = result
     _state["threshold"] = active_threshold
+    _state["synthesize"] = active_synthesize
     return result
 
 
@@ -174,13 +182,27 @@ def create_ticket(payload: TicketIn):
 
 
 @app.post("/api/regenerate")
-def regenerate(threshold: float | None = None):
-    result = _regenerate(threshold)
+def regenerate(threshold: float | None = None, synthesize: bool | None = None):
+    result = _regenerate(threshold, synthesize)
     return {
         "ticket_count": len(result.tickets),
         "cluster_count": len(result.runbooks),
         "threshold": _state["threshold"],
+        "synthesize_enabled": _state["synthesize"],
+        "synthesized_count": sum(1 for rb in result.runbooks if rb.ai_root_cause),
         "runbook_slugs": [rb.slug for rb in result.runbooks],
+    }
+
+
+@app.get("/api/status")
+def status():
+    """Lets the frontend know whether the AI-synthesis toggle would actually
+    do anything before the user flips it — and after, whether it's on."""
+    return {
+        "llm_configured": llm.has_credentials(),
+        "llm_model": llm.DEFAULT_MODEL,
+        "synthesize_enabled": _state["synthesize"],
+        "threshold": _state["threshold"],
     }
 
 

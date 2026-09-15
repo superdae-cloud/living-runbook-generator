@@ -18,6 +18,7 @@ export default function App() {
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
+  const [status, setStatus] = useState(null)
 
   const notify = useCallback((message, kind = 'info') => {
     setToast({ message, kind, key: Date.now() })
@@ -38,6 +39,7 @@ export default function App() {
 
   useEffect(() => {
     refresh()
+    api.status().then(setStatus).catch(() => {})
   }, [refresh])
 
   const goDashboard = () => setView({ name: 'dashboard' })
@@ -47,18 +49,28 @@ export default function App() {
   const goRunbook = (slug) => setView({ name: 'runbook', slug })
   const goTicket = (id) => setView({ name: 'ticket', id })
 
-  const handleRegenerate = async () => {
+  const handleRegenerate = async (synthesizeOverride) => {
     notify('Regenerating runbooks…')
     try {
-      const result = await api.regenerate()
+      const result = await api.regenerate(undefined, synthesizeOverride)
+      const aiNote = result.synthesize_enabled ? `, ${result.synthesized_count} AI-synthesized` : ''
       notify(
-        `Regenerated: ${result.ticket_count} ticket(s) → ${result.cluster_count} runbook(s)`,
+        `Regenerated: ${result.ticket_count} ticket(s) → ${result.cluster_count} runbook(s)${aiNote}`,
         'success',
       )
+      setStatus((s) => (s ? { ...s, synthesize_enabled: result.synthesize_enabled } : s))
       await refresh()
     } catch (err) {
       notify(`Regenerate failed: ${err.message}`, 'error')
     }
+  }
+
+  const handleToggleSynthesize = async () => {
+    if (!status?.llm_configured) {
+      notify('AI synthesis needs Anthropic credentials configured on the server — see README.', 'error')
+      return
+    }
+    await handleRegenerate(!status.synthesize_enabled)
   }
 
   const handleTicketCreated = async (result) => {
@@ -111,7 +123,7 @@ export default function App() {
           + New ticket
         </button>
         <button
-          onClick={handleRegenerate}
+          onClick={() => handleRegenerate()}
           style={{
             background: 'transparent',
             color: 'var(--text)',
@@ -121,6 +133,24 @@ export default function App() {
           }}
         >
           ↻ Regenerate
+        </button>
+        <button
+          onClick={handleToggleSynthesize}
+          title={
+            status?.llm_configured
+              ? `Ask ${status.llm_model} to synthesize one root-cause paragraph per cluster`
+              : 'Needs Anthropic credentials configured on the server'
+          }
+          style={{
+            background: status?.synthesize_enabled ? 'var(--accent-dim)' : 'transparent',
+            color: status?.synthesize_enabled ? 'var(--accent)' : 'var(--text-dim)',
+            border: '1px solid var(--border)',
+            borderRadius: 4,
+            padding: '0.4rem 0.8rem',
+            opacity: status?.llm_configured ? 1 : 0.6,
+          }}
+        >
+          ✨ AI root cause: {status?.synthesize_enabled ? 'On' : 'Off'}
         </button>
       </header>
 

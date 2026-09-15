@@ -24,7 +24,7 @@
 - `show interfaces` revealed the replacement card came up with jumbo MTU (9000) by default while the peer stayed at 1500
 - Packet capture confirmed DBD packets silently dropped, matching a pattern seen before
 
-## Likely root cause(s)
+## Root cause
 - MTU mismatch between the two core router interfaces (jumbo frames enabled on one side only) caused DBD packet exchange to fail, preventing the neighbor from reaching Full state.
 - MTU mismatch introduced by a hardware replacement — the new line card's default MTU didn't match the OSPF peer, breaking DBD exchange.
 

@@ -45,6 +45,8 @@ class Runbook:
     title: str
     signature_terms: list[str]
     tickets: list[Ticket]
+    ai_root_cause: str | None = None
+    ai_root_cause_model: str | None = None
 
     @property
     def filename(self) -> str:
@@ -149,6 +151,8 @@ def runbook_view(runbook: Runbook, existing_manual_notes: str) -> dict:
             {"id": t.id, "date": t.date, "device": t.device, "file": t.source_path.name} for t in tickets
         ],
         "manual_notes": existing_manual_notes,
+        "ai_root_cause": runbook.ai_root_cause,
+        "ai_root_cause_model": runbook.ai_root_cause_model,
     }
 
 
@@ -196,8 +200,25 @@ def render_runbook_markdown(runbook: Runbook, existing_manual_notes: str) -> str
         lines.append("- (none recorded)")
     lines.append("")
 
-    lines.append("## Likely root cause(s)")
-    if view["root_causes"]:
+    lines.append("## Root cause")
+    if view["ai_root_cause"]:
+        model_note = f" using {view['ai_root_cause_model']}" if view["ai_root_cause_model"] else ""
+        lines.append(
+            f"*AI-synthesized from {len(tickets)} incident(s){model_note} — verify against"
+            " source tickets before treating this as ground truth during a live incident.*"
+        )
+        lines.append("")
+        lines.append(view["ai_root_cause"])
+        lines.append("")
+        lines.append("<details>")
+        lines.append("<summary>Raw root-cause reports per incident</summary>")
+        lines.append("")
+        for rc in view["root_causes"]:
+            prefix = f"**({rc['count']}x)** " if rc["count"] > 1 else ""
+            lines.append(f"- {prefix}{rc['cause']}")
+        lines.append("")
+        lines.append("</details>")
+    elif view["root_causes"]:
         for rc in view["root_causes"]:
             prefix = f"**({rc['count']}x)** " if rc["count"] > 1 else ""
             lines.append(f"- {prefix}{rc['cause']}")

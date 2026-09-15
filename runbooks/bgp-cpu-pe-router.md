@@ -26,7 +26,7 @@
 - `show logging` showed hold timer expiry notifications
 - Same malformed route-map pattern found again, this time on PE4-ATL
 
-## Likely root cause(s)
+## Root cause
 - A malformed route-map on PE2-DEN was causing repeated recomputation of ~40k prefixes on every BGP update, spiking CPU and causing hold-timer expiry.
 - Same class of issue as before: a route-map missing a `continue` clause caused full re-evaluation of the prefix table on every update, spiking CPU and tripping the BGP hold timer.
 - Third occurrence of the same route-map defect (missing `continue` clause) — this template appears to have been pushed to multiple PE routers.
