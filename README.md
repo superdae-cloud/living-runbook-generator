@@ -3,6 +3,8 @@
 [![CI](https://github.com/superdae-cloud/living-runbook-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/superdae-cloud/living-runbook-generator/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+![Demo: submitting a ticket and watching the runbook update live](docs/demo.gif)
+
 An NLP layer that reads through a NOC's past incident tickets and
 postmortems and auto-builds troubleshooting runbooks keyed to symptom
 signatures (e.g. "BGP flap + high CPU on PE routers") — and keeps
