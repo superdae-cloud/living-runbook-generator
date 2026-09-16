@@ -8,6 +8,7 @@ import NewTicketForm from './components/NewTicketForm'
 import SimilarityGraph from './components/SimilarityGraph'
 import SearchBar from './components/SearchBar'
 import Toast from './components/Toast'
+import AboutModal from './components/AboutModal'
 
 // No react-router here on purpose — the whole app is five simple views
 // over one dataset, so a tiny {view, param} state machine is enough and
@@ -19,6 +20,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
   const [status, setStatus] = useState(null)
+  const [showAbout, setShowAbout] = useState(false)
 
   const notify = useCallback((message, kind = 'info') => {
     setToast({ message, kind, key: Date.now() })
@@ -95,6 +97,22 @@ export default function App() {
         <strong style={{ cursor: 'pointer', color: 'var(--accent)' }} onClick={goDashboard}>
           ▣ Living Runbook Generator
         </strong>
+        <button
+          onClick={() => setShowAbout(true)}
+          title="What is this?"
+          style={{
+            background: 'transparent',
+            color: 'var(--text-dim)',
+            border: '1px solid var(--border)',
+            borderRadius: '50%',
+            width: '1.75rem',
+            height: '1.75rem',
+            lineHeight: 1,
+            cursor: 'pointer',
+          }}
+        >
+          ℹ
+        </button>
         <nav style={{ display: 'flex', gap: '1rem' }}>
           <NavLink active={view.name === 'dashboard'} onClick={goDashboard}>
             Runbooks
@@ -173,6 +191,7 @@ export default function App() {
       </main>
 
       {toast && <Toast key={toast.key} message={toast.message} kind={toast.kind} onDone={() => setToast(null)} />}
+      {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
     </div>
   )
 }
